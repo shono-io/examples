@@ -6,39 +6,23 @@ import (
 
 var (
 	org     = "my-org"
-	domain  = "todos"
+	space   = "todos"
 	concept = "todo"
 
-	AddTodo      = go_shono.NewEvent(org, domain, concept, "add", new(AddTodoEvent))
-	TodoAdded    = go_shono.NewEvent(org, domain, concept, "added", new(TodoAddedEvent))
-	FinishTodo   = go_shono.NewEvent(org, domain, concept, "finish", new(FinishTodoEvent))
-	TodoFinished = go_shono.NewEvent(org, domain, concept, "finished", new(TodoFinishedEvent))
-	DeleteTodo   = go_shono.NewEvent(org, domain, concept, "delete", new(DeleteTodoEvent))
-	TodoDeleted  = go_shono.NewEvent(org, domain, concept, "deleted", new(TodoDeletedEvent))
+	TaskAdded    = go_shono.NewEvent(go_shono.NewEventId(org, space, concept, "added"), new(TaskAddedEvent))
+	TaskFinished = go_shono.NewEvent(go_shono.NewEventId(org, space, concept, "finished"), new(TaskFinishedEvent))
+	TaskDeleted  = go_shono.NewEvent(go_shono.NewEventId(org, space, concept, "deleted"), new(TaskDeletedEvent))
 )
 
-type AddTodoEvent struct {
+type TaskAddedEvent struct {
 	Id    string `json:"id"`
 	Label string `json:"label"`
 }
 
-type TodoAddedEvent struct {
-	Id    string `json:"id"`
-	Label string `json:"label"`
-}
-
-type FinishTodoEvent struct {
+type TaskFinishedEvent struct {
 	Id string `json:"id"`
 }
 
-type TodoFinishedEvent struct {
-	Id string `json:"id"`
-}
-
-type DeleteTodoEvent struct {
-	Id string `json:"id"`
-}
-
-type TodoDeletedEvent struct {
+type TaskDeletedEvent struct {
 	Id string `json:"id"`
 }
