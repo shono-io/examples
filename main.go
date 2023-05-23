@@ -1,28 +1,30 @@
 package main
 
 import (
-	"github.com/arangodb/go-driver"
+	"context"
+	"crypto/tls"
+	"fmt"
 	"github.com/compose-spec/compose-go/dotenv"
-	go_shono "github.com/shono-io/go-shono"
-	"github.com/shono-io/shono-examples/arangodb"
-	"github.com/shono-io/shono-examples/todos"
+	"github.com/shono-io/shono/cloud"
 	"github.com/sirupsen/logrus"
 	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/twmb/franz-go/pkg/sr"
+	"github.com/twmb/franz-go/pkg/sasl/plain"
+	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 var (
-	KafkaBrokersEnv = "SHONO_KAFKA_BROKERS"
-	KafkaGroupIdEnv = "SHONO_KAFKA_GROUP_ID"
+	KafkaBrokersEnv   = "KAFKA_BROKERS"
+	KafkaApiKeyEnv    = "KAFKA_API_KEY"
+	KafkaApiSecretEnv = "KAFKA_API_SECRET"
 
-	SrEndpointEnv = "SHONO_SR_ENDPOINT"
-
-	ADBEndpointEnv = "SHONO_ARANGODB_ENDPOINT"
-	ADBDatabaseEnv = "SHONO_ARANGODB_DATABASE"
-	ADBUsernameEnv = "SHONO_ARANGODB_USERNAME"
-	ADBPasswordEnv = "SHONO_ARANGODB_PASSWORD"
+	ConfluentEnvironmentIdEnv      = "CONFLUENT_ENVIRONMENT_ID"
+	ConfluentClusterIdEnv          = "CONFLUENT_CLUSTER_ID"
+	ConfluentClusterAPIEndpointEnv = "CONFLUENT_CLUSTER_API_ENDPOINT"
+	ConfluentApiKeyEnv             = "CONFLUENT_API_KEY"
+	ConfluentApiSecretEnv          = "CONFLUENT_API_SECRET"
 
 	LogLevelEnv = "LOG_LEVEL"
 )
@@ -42,31 +44,23 @@ func main() {
 		}
 	}
 
-	// -- create the runtime
-	runtime := go_shono.NewRuntime(
-		go_shono.WithResource(arangodb.MustNewResource("db",
-			arangodb.WithEndpoint(os.Getenv(ADBEndpointEnv)),
-			arangodb.WithAuthentication(driver.BasicAuthentication(os.Getenv(ADBUsernameEnv), os.Getenv(ADBPasswordEnv))),
-			arangodb.WithDatabaseName(os.Getenv(ADBDatabaseEnv)),
-		)),
+	tlsDialer := &tls.Dialer{NetDialer: &net.Dialer{Timeout: 10 * time.Second}}
+	cc, err := cloud.NewConfluentClient(
+		os.Getenv(ConfluentEnvironmentIdEnv),
+		os.Getenv(ConfluentClusterIdEnv),
+		os.Getenv(ConfluentClusterAPIEndpointEnv),
+		os.Getenv(ConfluentApiKeyEnv),
+		os.Getenv(ConfluentApiSecretEnv),
+		kgo.SeedBrokers(strings.Split(os.Getenv(KafkaBrokersEnv), ",")...),
+		kgo.SASL(plain.Auth{User: os.Getenv(KafkaApiKeyEnv), Pass: os.Getenv(KafkaApiSecretEnv)}.AsMechanism()),
+		kgo.Dialer(tlsDialer.DialContext),
 	)
+	if err != nil {
+		panic(fmt.Errorf("failed to create confluent client: %w", err))
+	}
 
-	// -- create the agent
-	agent := go_shono.NewAgent(
-		"my-org",
-		"my-app",
-		go_shono.WithKafkaOpts(
-			kgo.SeedBrokers(strings.Split(os.Getenv(KafkaBrokersEnv), ",")...),
-			kgo.ConsumerGroup(os.Getenv(KafkaGroupIdEnv)),
-		),
-		go_shono.WithSchemaRegistryOpts(
-			sr.URLs(os.Getenv(SrEndpointEnv)),
-		),
-		go_shono.WithReaktor(todos.Reaktors(runtime)...),
-	)
-
-	// -- run the agent
-	if err := agent.Run(); err != nil {
+	err = cc.CreateTopicAcl(context.Background(), "ddd", "sa-d1ndkd")
+	if err != nil {
 		panic(err)
 	}
 }
