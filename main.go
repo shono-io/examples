@@ -59,8 +59,12 @@ func main() {
 		panic(fmt.Errorf("failed to create confluent client: %w", err))
 	}
 
-	err = cc.CreateTopicAcl(context.Background(), "ddd", "sa-d1ndkd")
+	//err = cc.CreateTopicAcl(context.Background(), "ddd", "sa-d1ndkd")
+	id, secret, err := cc.CreateApiKey(context.Background(), "sa-d1ndkd")
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Printf("id: %s, secret: %s\n", id, secret)
+
 }
