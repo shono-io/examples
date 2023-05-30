@@ -1,16 +1,16 @@
-module github.com/shono-io/shono-examples
+module github.com/shono-io/examples
 
 go 1.20
 
-replace github.com/shono-io/go-shono v0.0.0 => ../go-shono
+replace github.com/shono-io/shono v0.0.0 => ../go-shono
 
 replace github.com/shono-io/shono-ccloud v1.0.0 => ../shono-ccloud
 
-replace github.com/shono-io/shono v0.0.0 => ../shono
+replace github.com/shono-io/cloud v0.0.0 => ../shono
 
 require (
 	github.com/compose-spec/compose-go v1.12.0
-	github.com/shono-io/go-shono v0.0.0
+	github.com/shono-io/shono v0.0.0
 	github.com/sirupsen/logrus v1.9.0
 )
 

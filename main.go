@@ -3,9 +3,8 @@ package main
 import (
 	"context"
 	"github.com/compose-spec/compose-go/dotenv"
-	"github.com/shono-io/go-shono/shono"
-	"github.com/shono-io/go-shono/shono/local"
-	"github.com/shono-io/go-shono/shono/logic"
+	"github.com/shono-io/shono"
+	"github.com/shono-io/shono/logic"
 	"github.com/sirupsen/logrus"
 	"os"
 )
@@ -39,11 +38,6 @@ func main() {
 		}
 	}
 
-	cl, err := local.NewClient("my_client", local.NewScopeRepo(), local.NewResourceRepo())
-	if err != nil {
-		logrus.Panicf("failed to create local client: %v", err)
-	}
-
 	bb := shono.NewKafkaBackbone(map[string]any{
 		"seed_brokers": []string{
 			os.Getenv(KafkaBrokersEnv),
@@ -60,55 +54,43 @@ func main() {
 		},
 	}, shono.PerScopeLogStrategy)
 
-	ctx := context.Background()
+	// -- create events
+	var (
+		employeeCreationRequested = shono.NewEvent("hr", "employee", "creation_requested")
+		employeeCreated           = shono.NewEvent("hr", "employee", "created")
+		employeeCreationFailed    = shono.NewEvent("hr", "employee", "creation_failed")
 
-	// -- create a scope
-	hr := shono.NewScope("hr", "HR Dept", "The HR Department", local.NewConceptRepo(), local.NewReaktorRepo())
-	if err := cl.AddScope(ctx, hr); err != nil {
-		logrus.Panicf("failed to add scope: %v", err)
-	}
+		employeeDeletionRequested = shono.NewEvent("hr", "employee", "deletion_requested")
+		employeeDeleted           = shono.NewEvent("hr", "employee", "deleted")
+		employeeDeletionFailed    = shono.NewEvent("hr", "employee", "deletion_failed")
+	)
 
-	// -- create a concept within the scope
-	employee := shono.NewConcept("hr", "employee", "Employee", "An employee", local.NewEventRepo())
-	if err := hr.AddConcept(ctx, employee); err != nil {
-		logrus.Panicf("failed to add concept: %v", err)
-	}
-
-	// -- create an event within the concept
-	employeeCreationRequested := shono.NewEvent("hr", "employee", "creation_requested", "Employee Creation Requested", "An employee creation was requested")
-	if err := employee.AddEvent(ctx, employeeCreationRequested); err != nil {
-		logrus.Panicf("failed to add event: %v", err)
-	}
-
-	employeeCreated := shono.NewEvent("hr", "employee", "created", "Employee Created", "An employee was created")
-	if err := employee.AddEvent(ctx, employeeCreated); err != nil {
-		logrus.Panicf("failed to add event: %v", err)
-	}
-
-	employeeCreationFailed := shono.NewEvent("hr", "employee", "creation_failed", "Employee Creation Failed", "An employee creation failed")
-	if err := employee.AddEvent(ctx, employeeCreationFailed); err != nil {
-		logrus.Panicf("failed to add event: %v", err)
-	}
-
-	onEmployeeCreationRequested := shono.NewReaktor("hr", "onEmployeeCreationRequested", "On Employee Creation Requested", "A reaktor that reacts to employee creation requests",
+	// -- create a first reaktor that listens to the employee creation requested event
+	onEmployeeCreationRequested := shono.NewReaktor("hr", "onEmployeeCreationRequested",
 		employeeCreationRequested.Id(),
-		logic.NewBenthosLogic(`
-mapping: |
-  root = this`),
-		employeeCreated.Id(), employeeCreationFailed.Id())
-	if err := hr.AddReaktor(ctx, onEmployeeCreationRequested); err != nil {
-		logrus.Panicf("failed to add reaktor: %v", err)
-	}
+		logic.NewBenthosLogic(`mapping: root = this`),
+		shono.WithOutputEvent(employeeCreated.Id()),
+		shono.WithOutputEvent(employeeCreationFailed.Id()))
 
+	// -- create a second reaktor that listens to the employee deletion requested event
+	onEmployeeDeletionRequested := shono.NewReaktor("hr", "onEmployeeDeletionRequested",
+		employeeDeletionRequested.Id(),
+		logic.NewBenthosLogic(`mapping: root = this`),
+		shono.WithOutputEvent(employeeDeleted.Id()),
+		shono.WithOutputEvent(employeeDeletionFailed.Id()))
+
+	// -- create a runtime for both reaktors
 	runtime, err := shono.NewRuntime(
 		shono.WithBackbone(bb),
-		shono.WithReaktor(onEmployeeCreationRequested))
+		shono.WithReaktor(onEmployeeCreationRequested),
+		shono.WithReaktor(onEmployeeDeletionRequested))
 	if err != nil {
 		logrus.Panicf("failed to create runtime: %v", err)
 	}
 	defer runtime.Close()
 
-	if err := runtime.Run(ctx); err != nil {
+	// -- execute the runtime
+	if err := runtime.Run(context.Background()); err != nil {
 		logrus.Panicf("failed to run: %v", err)
 	}
 }
