@@ -2,11 +2,9 @@ module github.com/shono-io/examples
 
 go 1.20
 
-replace github.com/shono-io/shono v0.0.0 => ../go-shono
+replace github.com/shono-io/shono v0.0.0 => ../shono
 
 replace github.com/shono-io/shono-ccloud v1.0.0 => ../shono-ccloud
-
-replace github.com/shono-io/cloud v0.0.0 => ../shono
 
 require (
 	github.com/compose-spec/compose-go v1.12.0
@@ -35,7 +33,7 @@ require (
 	github.com/Azure/azure-storage-queue-go v0.0.0-20191125232315-636801874cdd // indirect
 	github.com/Azure/go-amqp v0.17.0 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
-	github.com/Azure/go-autorest/autorest v0.11.23 // indirect
+	github.com/Azure/go-autorest/autorest v0.11.24 // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.18 // indirect
 	github.com/Azure/go-autorest/autorest/date v0.3.0 // indirect
 	github.com/Azure/go-autorest/logger v0.2.1 // indirect
@@ -56,8 +54,9 @@ require (
 	github.com/apache/thrift v0.17.0 // indirect
 	github.com/arangodb/go-driver v1.5.2 // indirect
 	github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e // indirect
+	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-lambda-go v1.28.0 // indirect
-	github.com/aws/aws-sdk-go v1.42.31 // indirect
+	github.com/aws/aws-sdk-go v1.43.16 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.16.16 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.8 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.12.20 // indirect
@@ -141,11 +140,8 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.13.0 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
-	github.com/hashicorp/go-hclog v1.5.0 // indirect
-	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.1 // indirect
-	github.com/hashicorp/raft v1.5.0 // indirect
 	github.com/influxdata/go-syslog/v3 v3.0.0 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20220302092344-a9ab5670611c // indirect
 	github.com/itchyny/gojq v0.12.11 // indirect
