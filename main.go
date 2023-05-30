@@ -4,12 +4,19 @@ import (
 	"context"
 	"github.com/compose-spec/compose-go/dotenv"
 	"github.com/shono-io/shono"
+	"github.com/shono-io/shono/benthos"
 	"github.com/shono-io/shono/logic"
+	"github.com/shono-io/shono/store"
 	"github.com/sirupsen/logrus"
 	"os"
 )
 
 var (
+	ADBEndpointEnv = "ARANGODB_ENDPOINT"
+	ADBDatabaseEnv = "ARANGODB_DATABASE"
+	ADBUsernameEnv = "ARANGODB_USERNAME"
+	ADBPasswordEnv = "ARANGODB_PASSWORD"
+
 	KafkaBrokersEnv   = "KAFKA_BROKERS"
 	KafkaApiKeyEnv    = "KAFKA_API_KEY"
 	KafkaApiSecretEnv = "KAFKA_API_SECRET"
@@ -38,6 +45,7 @@ func main() {
 		}
 	}
 
+	// -- create the backbone we will use for the reaktor
 	bb := shono.NewKafkaBackbone(map[string]any{
 		"seed_brokers": []string{
 			os.Getenv(KafkaBrokersEnv),
@@ -53,6 +61,11 @@ func main() {
 			},
 		},
 	}, shono.PerScopeLogStrategy)
+
+	// -- create the store we will use for employee concepts
+	employeeStore := store.NewArangodbStore("hr", "employee", "employees",
+		os.Getenv(ADBEndpointEnv), os.Getenv(ADBDatabaseEnv), "employees",
+		os.Getenv(ADBUsernameEnv), os.Getenv(ADBPasswordEnv))
 
 	// -- create events
 	var (
@@ -70,20 +83,22 @@ func main() {
 		employeeCreationRequested.Id(),
 		logic.NewBenthosLogic(`mapping: root = this`),
 		shono.WithOutputEvent(employeeCreated.Id()),
-		shono.WithOutputEvent(employeeCreationFailed.Id()))
+		shono.WithOutputEvent(employeeCreationFailed.Id()),
+		shono.WithStore(employeeStore))
 
 	// -- create a second reaktor that listens to the employee deletion requested event
 	onEmployeeDeletionRequested := shono.NewReaktor("hr", "onEmployeeDeletionRequested",
 		employeeDeletionRequested.Id(),
 		logic.NewBenthosLogic(`mapping: root = this`),
 		shono.WithOutputEvent(employeeDeleted.Id()),
-		shono.WithOutputEvent(employeeDeletionFailed.Id()))
+		shono.WithOutputEvent(employeeDeletionFailed.Id()),
+		shono.WithStore(employeeStore))
 
 	// -- create a runtime for both reaktors
-	runtime, err := shono.NewRuntime(
-		shono.WithBackbone(bb),
-		shono.WithReaktor(onEmployeeCreationRequested),
-		shono.WithReaktor(onEmployeeDeletionRequested))
+	runtime, err := benthos.NewRuntime(
+		benthos.WithBackbone(bb),
+		benthos.WithReaktor(onEmployeeCreationRequested),
+		benthos.WithReaktor(onEmployeeDeletionRequested))
 	if err != nil {
 		logrus.Panicf("failed to create runtime: %v", err)
 	}
