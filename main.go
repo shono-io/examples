@@ -1,28 +1,31 @@
 package main
 
 import (
-	"github.com/arangodb/go-driver"
+	"context"
 	"github.com/compose-spec/compose-go/dotenv"
-	go_shono "github.com/shono-io/go-shono"
-	"github.com/shono-io/shono-examples/arangodb"
-	"github.com/shono-io/shono-examples/todos"
+	"github.com/shono-io/shono"
+	"github.com/shono-io/shono/benthos"
+	"github.com/shono-io/shono/logic"
+	"github.com/shono-io/shono/store"
 	"github.com/sirupsen/logrus"
-	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/twmb/franz-go/pkg/sr"
 	"os"
-	"strings"
 )
 
 var (
-	KafkaBrokersEnv = "SHONO_KAFKA_BROKERS"
-	KafkaGroupIdEnv = "SHONO_KAFKA_GROUP_ID"
+	ADBEndpointEnv = "ARANGODB_ENDPOINT"
+	ADBDatabaseEnv = "ARANGODB_DATABASE"
+	ADBUsernameEnv = "ARANGODB_USERNAME"
+	ADBPasswordEnv = "ARANGODB_PASSWORD"
 
-	SrEndpointEnv = "SHONO_SR_ENDPOINT"
+	KafkaBrokersEnv   = "KAFKA_BROKERS"
+	KafkaApiKeyEnv    = "KAFKA_API_KEY"
+	KafkaApiSecretEnv = "KAFKA_API_SECRET"
 
-	ADBEndpointEnv = "SHONO_ARANGODB_ENDPOINT"
-	ADBDatabaseEnv = "SHONO_ARANGODB_DATABASE"
-	ADBUsernameEnv = "SHONO_ARANGODB_USERNAME"
-	ADBPasswordEnv = "SHONO_ARANGODB_PASSWORD"
+	ConfluentEnvironmentIdEnv      = "CONFLUENT_ENVIRONMENT_ID"
+	ConfluentClusterIdEnv          = "CONFLUENT_CLUSTER_ID"
+	ConfluentClusterAPIEndpointEnv = "CONFLUENT_CLUSTER_API_ENDPOINT"
+	ConfluentApiKeyEnv             = "CONFLUENT_API_KEY"
+	ConfluentApiSecretEnv          = "CONFLUENT_API_SECRET"
 
 	LogLevelEnv = "LOG_LEVEL"
 )
@@ -42,31 +45,67 @@ func main() {
 		}
 	}
 
-	// -- create the runtime
-	runtime := go_shono.NewRuntime(
-		go_shono.WithResource(arangodb.MustNewResource("db",
-			arangodb.WithEndpoint(os.Getenv(ADBEndpointEnv)),
-			arangodb.WithAuthentication(driver.BasicAuthentication(os.Getenv(ADBUsernameEnv), os.Getenv(ADBPasswordEnv))),
-			arangodb.WithDatabaseName(os.Getenv(ADBDatabaseEnv)),
-		)),
+	// -- create the backbone we will use for the reaktor
+	bb := shono.NewKafkaBackbone(map[string]any{
+		"seed_brokers": []string{
+			os.Getenv(KafkaBrokersEnv),
+		},
+		"tls": map[string]any{
+			"enabled": true,
+		},
+		"sasl": []map[string]any{
+			{
+				"mechanism": "PLAIN",
+				"username":  os.Getenv(KafkaApiKeyEnv),
+				"password":  os.Getenv(KafkaApiSecretEnv),
+			},
+		},
+	}, shono.PerScopeLogStrategy)
+
+	// -- create the store we will use for employee concepts
+	employeeStore := store.NewArangodbStore("hr", "employee", "employees",
+		os.Getenv(ADBEndpointEnv), os.Getenv(ADBDatabaseEnv), "employees",
+		os.Getenv(ADBUsernameEnv), os.Getenv(ADBPasswordEnv))
+
+	// -- create events
+	var (
+		employeeCreationRequested = shono.NewEvent("hr", "employee", "creation_requested")
+		employeeCreated           = shono.NewEvent("hr", "employee", "created")
+		employeeCreationFailed    = shono.NewEvent("hr", "employee", "creation_failed")
+
+		employeeDeletionRequested = shono.NewEvent("hr", "employee", "deletion_requested")
+		employeeDeleted           = shono.NewEvent("hr", "employee", "deleted")
+		employeeDeletionFailed    = shono.NewEvent("hr", "employee", "deletion_failed")
 	)
 
-	// -- create the agent
-	agent := go_shono.NewAgent(
-		"my-org",
-		"my-app",
-		go_shono.WithKafkaOpts(
-			kgo.SeedBrokers(strings.Split(os.Getenv(KafkaBrokersEnv), ",")...),
-			kgo.ConsumerGroup(os.Getenv(KafkaGroupIdEnv)),
-		),
-		go_shono.WithSchemaRegistryOpts(
-			sr.URLs(os.Getenv(SrEndpointEnv)),
-		),
-		go_shono.WithReaktor(todos.Reaktors(runtime)...),
-	)
+	// -- create a first reaktor that listens to the employee creation requested event
+	onEmployeeCreationRequested := shono.NewReaktor("hr", "onEmployeeCreationRequested",
+		employeeCreationRequested.Id(),
+		logic.NewBenthosLogic(`mapping: root = this`),
+		shono.WithOutputEvent(employeeCreated.Id()),
+		shono.WithOutputEvent(employeeCreationFailed.Id()),
+		shono.WithStore(employeeStore))
 
-	// -- run the agent
-	if err := agent.Run(); err != nil {
-		panic(err)
+	// -- create a second reaktor that listens to the employee deletion requested event
+	onEmployeeDeletionRequested := shono.NewReaktor("hr", "onEmployeeDeletionRequested",
+		employeeDeletionRequested.Id(),
+		logic.NewBenthosLogic(`mapping: root = this`),
+		shono.WithOutputEvent(employeeDeleted.Id()),
+		shono.WithOutputEvent(employeeDeletionFailed.Id()),
+		shono.WithStore(employeeStore))
+
+	// -- create a runtime for both reaktors
+	runtime, err := benthos.NewRuntime(
+		benthos.WithBackbone(bb),
+		benthos.WithReaktor(onEmployeeCreationRequested),
+		benthos.WithReaktor(onEmployeeDeletionRequested))
+	if err != nil {
+		logrus.Panicf("failed to create runtime: %v", err)
+	}
+	defer runtime.Close()
+
+	// -- execute the runtime
+	if err := runtime.Run(context.Background()); err != nil {
+		logrus.Panicf("failed to run: %v", err)
 	}
 }
