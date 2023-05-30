@@ -2,17 +2,12 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"fmt"
 	"github.com/compose-spec/compose-go/dotenv"
-	"github.com/shono-io/shono/cloud"
+	"github.com/shono-io/go-shono/shono"
+	"github.com/shono-io/go-shono/shono/local"
+	"github.com/shono-io/go-shono/shono/logic"
 	"github.com/sirupsen/logrus"
-	"github.com/twmb/franz-go/pkg/kgo"
-	"github.com/twmb/franz-go/pkg/sasl/plain"
-	"net"
 	"os"
-	"strings"
-	"time"
 )
 
 var (
@@ -44,27 +39,76 @@ func main() {
 		}
 	}
 
-	tlsDialer := &tls.Dialer{NetDialer: &net.Dialer{Timeout: 10 * time.Second}}
-	cc, err := cloud.NewConfluentClient(
-		os.Getenv(ConfluentEnvironmentIdEnv),
-		os.Getenv(ConfluentClusterIdEnv),
-		os.Getenv(ConfluentClusterAPIEndpointEnv),
-		os.Getenv(ConfluentApiKeyEnv),
-		os.Getenv(ConfluentApiSecretEnv),
-		kgo.SeedBrokers(strings.Split(os.Getenv(KafkaBrokersEnv), ",")...),
-		kgo.SASL(plain.Auth{User: os.Getenv(KafkaApiKeyEnv), Pass: os.Getenv(KafkaApiSecretEnv)}.AsMechanism()),
-		kgo.Dialer(tlsDialer.DialContext),
-	)
+	cl, err := local.NewClient("my_client", local.NewScopeRepo(), local.NewResourceRepo())
 	if err != nil {
-		panic(fmt.Errorf("failed to create confluent client: %w", err))
+		logrus.Panicf("failed to create local client: %v", err)
 	}
 
-	//err = cc.CreateTopicAcl(context.Background(), "ddd", "sa-d1ndkd")
-	id, secret, err := cc.CreateApiKey(context.Background(), "sa-d1ndkd")
-	if err != nil {
-		panic(err)
+	bb := shono.NewKafkaBackbone(map[string]any{
+		"seed_brokers": []string{
+			os.Getenv(KafkaBrokersEnv),
+		},
+		"tls": map[string]any{
+			"enabled": true,
+		},
+		"sasl": []map[string]any{
+			{
+				"mechanism": "PLAIN",
+				"username":  os.Getenv(KafkaApiKeyEnv),
+				"password":  os.Getenv(KafkaApiSecretEnv),
+			},
+		},
+	}, shono.PerScopeLogStrategy)
+
+	ctx := context.Background()
+
+	// -- create a scope
+	hr := shono.NewScope("hr", "HR Dept", "The HR Department", local.NewConceptRepo(), local.NewReaktorRepo())
+	if err := cl.AddScope(ctx, hr); err != nil {
+		logrus.Panicf("failed to add scope: %v", err)
 	}
 
-	fmt.Printf("id: %s, secret: %s\n", id, secret)
+	// -- create a concept within the scope
+	employee := shono.NewConcept("hr", "employee", "Employee", "An employee", local.NewEventRepo())
+	if err := hr.AddConcept(ctx, employee); err != nil {
+		logrus.Panicf("failed to add concept: %v", err)
+	}
 
+	// -- create an event within the concept
+	employeeCreationRequested := shono.NewEvent("hr", "employee", "creation_requested", "Employee Creation Requested", "An employee creation was requested")
+	if err := employee.AddEvent(ctx, employeeCreationRequested); err != nil {
+		logrus.Panicf("failed to add event: %v", err)
+	}
+
+	employeeCreated := shono.NewEvent("hr", "employee", "created", "Employee Created", "An employee was created")
+	if err := employee.AddEvent(ctx, employeeCreated); err != nil {
+		logrus.Panicf("failed to add event: %v", err)
+	}
+
+	employeeCreationFailed := shono.NewEvent("hr", "employee", "creation_failed", "Employee Creation Failed", "An employee creation failed")
+	if err := employee.AddEvent(ctx, employeeCreationFailed); err != nil {
+		logrus.Panicf("failed to add event: %v", err)
+	}
+
+	onEmployeeCreationRequested := shono.NewReaktor("hr", "onEmployeeCreationRequested", "On Employee Creation Requested", "A reaktor that reacts to employee creation requests",
+		employeeCreationRequested.Id(),
+		logic.NewBenthosLogic(`
+mapping: |
+  root = this`),
+		employeeCreated.Id(), employeeCreationFailed.Id())
+	if err := hr.AddReaktor(ctx, onEmployeeCreationRequested); err != nil {
+		logrus.Panicf("failed to add reaktor: %v", err)
+	}
+
+	runtime, err := shono.NewRuntime(
+		shono.WithBackbone(bb),
+		shono.WithReaktor(onEmployeeCreationRequested))
+	if err != nil {
+		logrus.Panicf("failed to create runtime: %v", err)
+	}
+	defer runtime.Close()
+
+	if err := runtime.Run(ctx); err != nil {
+		logrus.Panicf("failed to run: %v", err)
+	}
 }
