@@ -62,24 +62,27 @@ func main() {
 		},
 	}, shono.PerScopeLogStrategy)
 
+	hrScope := shono.NewScope("hr")
+	employeeConcept := hrScope.NewConcept("employee")
+
 	// -- create the store we will use for employee concepts
-	employeeStore := store.NewArangodbStore("hr", "employee", "employees",
+	employeeStore := store.NewArangodbStore(employeeConcept, "employee_store",
 		os.Getenv(ADBEndpointEnv), os.Getenv(ADBDatabaseEnv), "employees",
 		os.Getenv(ADBUsernameEnv), os.Getenv(ADBPasswordEnv))
 
 	// -- create events
 	var (
-		employeeCreationRequested = shono.NewEvent("hr", "employee", "creation_requested")
-		employeeCreated           = shono.NewEvent("hr", "employee", "created")
-		employeeCreationFailed    = shono.NewEvent("hr", "employee", "creation_failed")
+		employeeCreationRequested = shono.NewEvent(employeeConcept.Key(), "creation_requested")
+		employeeCreated           = shono.NewEvent(employeeConcept.Key(), "created")
+		employeeCreationFailed    = shono.NewEvent(employeeConcept.Key(), "creation_failed")
 
-		employeeDeletionRequested = shono.NewEvent("hr", "employee", "deletion_requested")
-		employeeDeleted           = shono.NewEvent("hr", "employee", "deleted")
-		employeeDeletionFailed    = shono.NewEvent("hr", "employee", "deletion_failed")
+		employeeDeletionRequested = shono.NewEvent(employeeConcept.Key(), "deletion_requested")
+		employeeDeleted           = shono.NewEvent(employeeConcept.Key(), "deleted")
+		employeeDeletionFailed    = shono.NewEvent(employeeConcept.Key(), "deletion_failed")
 	)
 
 	// -- create a first reaktor that listens to the employee creation requested event
-	onEmployeeCreationRequested := shono.NewReaktor("hr", "onEmployeeCreationRequested",
+	onEmployeeCreationRequested := shono.NewReaktor(hrScope.Key(), "onEmployeeCreationRequested",
 		employeeCreationRequested.Id(),
 		logic.NewBenthosLogic(`mapping: root = this`),
 		shono.WithOutputEvent(employeeCreated.Id()),
@@ -87,7 +90,7 @@ func main() {
 		shono.WithStore(employeeStore))
 
 	// -- create a second reaktor that listens to the employee deletion requested event
-	onEmployeeDeletionRequested := shono.NewReaktor("hr", "onEmployeeDeletionRequested",
+	onEmployeeDeletionRequested := shono.NewReaktor(hrScope.Key(), "onEmployeeDeletionRequested",
 		employeeDeletionRequested.Id(),
 		logic.NewBenthosLogic(`mapping: root = this`),
 		shono.WithOutputEvent(employeeDeleted.Id()),
