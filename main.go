@@ -6,6 +6,7 @@ import (
 	"github.com/shono-io/shono"
 	"github.com/shono-io/shono/benthos"
 	"github.com/shono-io/shono/logic"
+	"github.com/shono-io/shono/reaktor"
 	"github.com/shono-io/shono/store"
 	"github.com/sirupsen/logrus"
 	"os"
@@ -82,7 +83,7 @@ func main() {
 	)
 
 	// -- create a first reaktor that listens to the employee creation requested event
-	onEmployeeCreationRequested := shono.NewReaktor(hrScope.Key(), "onEmployeeCreationRequested",
+	onEmployeeCreationRequested := reaktor.NewReaktor(hrScope.Key(), "onEmployeeCreationRequested",
 		employeeCreationRequested.Id(),
 		logic.NewBenthosLogic(`mapping: root = this`),
 		shono.WithOutputEvent(employeeCreated.Id()),
@@ -90,7 +91,7 @@ func main() {
 		shono.WithStore(employeeStore))
 
 	// -- create a second reaktor that listens to the employee deletion requested event
-	onEmployeeDeletionRequested := shono.NewReaktor(hrScope.Key(), "onEmployeeDeletionRequested",
+	onEmployeeDeletionRequested := reaktor.NewReaktor(hrScope.Key(), "onEmployeeDeletionRequested",
 		employeeDeletionRequested.Id(),
 		logic.NewBenthosLogic(`mapping: root = this`),
 		shono.WithOutputEvent(employeeDeleted.Id()),
