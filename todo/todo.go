@@ -2,10 +2,11 @@ package todo
 
 import (
 	"fmt"
+	"github.com/shono-io/shono/commons"
 	"github.com/shono-io/shono/graph"
 )
 
-var Key = graph.NewKey("scope", "todo")
+var Key = commons.NewKey("scope", "todo")
 
 func Register(env graph.Environment) (err error) {
 	err = env.RegisterScope(graph.NewScope(Key,
