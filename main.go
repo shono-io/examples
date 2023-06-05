@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
 	"github.com/compose-spec/compose-go/dotenv"
 	"github.com/shono-io/shono"
+	"github.com/shono-io/shono/backbone"
 	"github.com/shono-io/shono/benthos"
-	"github.com/shono-io/shono/logic"
-	"github.com/shono-io/shono/reaktor"
-	"github.com/shono-io/shono/store"
+	"github.com/shono-io/shono/graph"
 	"github.com/sirupsen/logrus"
 	"os"
 )
@@ -46,8 +44,7 @@ func main() {
 		}
 	}
 
-	// -- create the backbone we will use for the reaktor
-	bb := shono.NewKafkaBackbone(map[string]any{
+	bb := backbone.NewKafkaBackbone(map[string]any{
 		"seed_brokers": []string{
 			os.Getenv(KafkaBrokersEnv),
 		},
@@ -61,55 +58,38 @@ func main() {
 				"password":  os.Getenv(KafkaApiSecretEnv),
 			},
 		},
-	}, shono.PerScopeLogStrategy)
+	}, backbone.PerScopeLogStrategy)
 
-	hrScope := shono.NewScope("hr")
-	employeeConcept := hrScope.NewConcept("employee")
+	s := core.CoreScope
 
-	// -- create the store we will use for employee concepts
-	employeeStore := store.NewArangodbStore(employeeConcept, "employee_store",
-		os.Getenv(ADBEndpointEnv), os.Getenv(ADBDatabaseEnv), "employees",
-		os.Getenv(ADBUsernameEnv), os.Getenv(ADBPasswordEnv))
-
-	// -- create events
-	var (
-		employeeCreationRequested = shono.NewEvent(employeeConcept.Key(), "creation_requested")
-		employeeCreated           = shono.NewEvent(employeeConcept.Key(), "created")
-		employeeCreationFailed    = shono.NewEvent(employeeConcept.Key(), "creation_failed")
-
-		employeeDeletionRequested = shono.NewEvent(employeeConcept.Key(), "deletion_requested")
-		employeeDeleted           = shono.NewEvent(employeeConcept.Key(), "deleted")
-		employeeDeletionFailed    = shono.NewEvent(employeeConcept.Key(), "deletion_failed")
-	)
-
-	// -- create a first reaktor that listens to the employee creation requested event
-	onEmployeeCreationRequested := reaktor.NewReaktor(hrScope.Key(), "onEmployeeCreationRequested",
-		employeeCreationRequested.Id(),
-		logic.NewBenthosLogic(`mapping: root = this`),
-		shono.WithOutputEvent(employeeCreated.Id()),
-		shono.WithOutputEvent(employeeCreationFailed.Id()),
-		shono.WithStore(employeeStore))
-
-	// -- create a second reaktor that listens to the employee deletion requested event
-	onEmployeeDeletionRequested := reaktor.NewReaktor(hrScope.Key(), "onEmployeeDeletionRequested",
-		employeeDeletionRequested.Id(),
-		logic.NewBenthosLogic(`mapping: root = this`),
-		shono.WithOutputEvent(employeeDeleted.Id()),
-		shono.WithOutputEvent(employeeDeletionFailed.Id()),
-		shono.WithStore(employeeStore))
-
-	// -- create a runtime for both reaktors
-	runtime, err := benthos.NewRuntime(
-		benthos.WithBackbone(bb),
-		benthos.WithReaktor(onEmployeeCreationRequested),
-		benthos.WithReaktor(onEmployeeDeletionRequested))
+	gen := benthos.NewGenerator("cloud", bb, 2)
+	res, err := gen.Generate(s)
 	if err != nil {
-		logrus.Panicf("failed to create runtime: %v", err)
+		logrus.Panicf("failed to generate: %v", err)
 	}
-	defer runtime.Close()
 
-	// -- execute the runtime
-	if err := runtime.Run(context.Background()); err != nil {
-		logrus.Panicf("failed to run: %v", err)
+	logrus.Infof("configuration:")
+	if err := res.Write(os.Stdout); err != nil {
+		logrus.Panicf("failed to write configuration: %v", err)
 	}
+
+	// -- create the output directory if it doesn't exist
+	if err := os.MkdirAll("out", os.ModePerm); err != nil {
+		logrus.Panicf("failed to create output directory: %v", err)
+	}
+
+	// -- write the configuration to a file
+	f, err := os.Create("out/benthos.yaml")
+	if err != nil {
+		logrus.Panicf("failed to create output file: %v", err)
+	}
+	defer f.Close()
+
+	if err := res.Write(f, shono.NonSecure()); err != nil {
+		logrus.Panicf("failed to write configuration: %v", err)
+	}
+}
+
+func buildEnvironment() graph.Environment {
+
 }
