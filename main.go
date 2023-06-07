@@ -49,21 +49,20 @@ func main() {
 		}
 	}
 
-	bb := backbone.NewKafkaBackbone(map[string]any{
-		"seed_brokers": []string{
-			os.Getenv(KafkaBrokersEnv),
+	bb := backbone.NewKafkaBackbone(backbone.KafkaBackboneConfig{
+		BootstrapServers: []string{os.Getenv(KafkaBrokersEnv)},
+		TLS: &backbone.TLS{
+			Enabled: true,
 		},
-		"tls": map[string]any{
-			"enabled": true,
-		},
-		"sasl": []map[string]any{
+		SASL: []backbone.SASLConfig{
 			{
-				"mechanism": "PLAIN",
-				"username":  os.Getenv(KafkaApiKeyEnv),
-				"password":  os.Getenv(KafkaApiSecretEnv),
+				Mechanism: "PLAIN",
+				Username:  os.Getenv(KafkaApiKeyEnv),
+				Password:  os.Getenv(KafkaApiSecretEnv),
 			},
 		},
-	}, backbone.PerScopeLogStrategy)
+		LogStrategy: backbone.PerScopeLogStrategy,
+	})
 
 	env := local.NewEnvironment(bb)
 	if err := register(env); err != nil {
