@@ -1,16 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"github.com/compose-spec/compose-go/dotenv"
-	"github.com/shono-io/examples/todo"
-	"github.com/shono-io/examples/todo/task"
-	"github.com/shono-io/shono/commons"
-	"github.com/shono-io/shono/graph"
+	"github.com/shono-io/examples/todo/tasks"
 	"github.com/shono-io/shono/local"
 	"github.com/shono-io/shono/runtime"
-	"github.com/shono-io/shono/systems/backbone"
-	"github.com/shono-io/shono/systems/storage/arangodb"
 	"github.com/sirupsen/logrus"
 	"os"
 )
@@ -49,54 +43,24 @@ func main() {
 		}
 	}
 
-	bb := backbone.NewKafkaBackbone(backbone.KafkaBackboneConfig{
-		BootstrapServers: []string{os.Getenv(KafkaBrokersEnv)},
-		TLS: &backbone.TLS{
-			Enabled: true,
-		},
-		SASL: []backbone.SASLConfig{
-			{
-				Mechanism: "PLAIN",
-				Username:  os.Getenv(KafkaApiKeyEnv),
-				Password:  os.Getenv(KafkaApiSecretEnv),
-			},
-		},
-		LogStrategy: backbone.PerScopeLogStrategy,
-	})
-
-	env := local.NewEnvironment(bb)
-	if err := register(env); err != nil {
-		logrus.Panicf("failed to register: %v", err)
+	// -- get the configuration file path
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "shono.yaml"
 	}
 
-	if err := runtime.Run(env); err != nil {
+	// -- get the reaktors this application is responsible for
+	reaktors, err := tasks.Reaktors()
+	if err != nil {
+		logrus.Panicf("failed to get reaktors: %v", err)
+	}
+
+	registry, err := local.Load(os.DirFS("."), configPath, local.WithReaktor(reaktors...))
+	if err != nil {
+		logrus.Panicf("failed to load the local registry from %q: %v", configPath, err)
+	}
+
+	if err := runtime.Run(registry); err != nil {
 		logrus.Panicf("failed to run: %v", err)
 	}
-}
-
-func register(env graph.Environment) error {
-	// -- register the arangodb storage
-	adbStorage, err := arangodb.NewStorage(
-		commons.NewKey("storage", "arangodb"),
-		[]string{os.Getenv(ADBEndpointEnv)},
-		os.Getenv(ADBUsernameEnv),
-		os.Getenv(ADBPasswordEnv),
-		os.Getenv(ADBDatabaseEnv),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create arangodb storage: %w", err)
-	}
-	if err := env.RegisterStorage(*adbStorage); err != nil {
-		return fmt.Errorf("failed to register arangodb storage: %w", err)
-	}
-
-	if err := todo.Register(env); err != nil {
-		return err
-	}
-
-	if err := task.Register(env); err != nil {
-		return fmt.Errorf("failed to register task: %w", err)
-	}
-
-	return nil
 }

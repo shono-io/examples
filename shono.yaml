@@ -1,0 +1,43 @@
+backbone:
+  kind: kafka
+  config:
+    bootstrap_servers:
+      - pkc-1wvvj.westeurope.azure.confluent.cloud:9092
+    sasl:
+      - mechanism: PLAIN
+        username: ${KAFKA_API_KEY}
+        password: ${KAFKA_API_SECRET}
+
+storages:
+  my_mongo:
+    kind: mongodb
+    config:
+      uri: ${MDB_URI}
+      database: "shono-dev"
+
+scopes:
+  todo:
+    name: Todo
+    description: Unit responsible for managing todo lists
+    concepts:
+      task:
+        name: Task
+        description: A task to be completed
+        single: task
+        plural: tasks
+        events:
+          operation_failed:
+            name: Operation Failed
+            description: An operation on a task failed
+          creation_requested:
+            name: Creation Requested
+            description: An external system (like an API) requested a task to be created
+          created:
+            name: Created
+            description: A task was created
+          deletion_requested:
+            name: Deletion Requested
+            description: An external system (like an API) requested a task to be deleted
+          deleted:
+            name: Deleted
+            description: A task was deleted
