@@ -10,21 +10,6 @@ import (
 )
 
 var (
-	ADBEndpointEnv = "ARANGODB_ENDPOINT"
-	ADBDatabaseEnv = "ARANGODB_DATABASE"
-	ADBUsernameEnv = "ARANGODB_USERNAME"
-	ADBPasswordEnv = "ARANGODB_PASSWORD"
-
-	KafkaBrokersEnv   = "KAFKA_BROKERS"
-	KafkaApiKeyEnv    = "KAFKA_API_KEY"
-	KafkaApiSecretEnv = "KAFKA_API_SECRET"
-
-	ConfluentEnvironmentIdEnv      = "CONFLUENT_ENVIRONMENT_ID"
-	ConfluentClusterIdEnv          = "CONFLUENT_CLUSTER_ID"
-	ConfluentClusterAPIEndpointEnv = "CONFLUENT_CLUSTER_API_ENDPOINT"
-	ConfluentApiKeyEnv             = "CONFLUENT_API_KEY"
-	ConfluentApiSecretEnv          = "CONFLUENT_API_SECRET"
-
 	LogLevelEnv = "LOG_LEVEL"
 )
 

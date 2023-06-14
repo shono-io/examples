@@ -25,6 +25,10 @@ scopes:
         description: A task to be completed
         single: task
         plural: tasks
+        store:
+          storage: my_mongo
+          collection: tasks
+
         events:
           operation_failed:
             name: Operation Failed
@@ -41,3 +45,36 @@ scopes:
           deleted:
             name: Deleted
             description: A task was deleted
+        on:
+          todo__task__creation_requested:
+            docs: |
+              When a creation is requested, we create the task in the store and emit a created event if it succeeds.
+
+            outputs:
+                - todo__task__created: |
+                    A task created event is emitted if the task was created successfully.
+                - todo__task__operation_failed: |
+                    An operation failed event is emitted if the task could not be created.
+
+            logic:
+              - store:
+                  concept: todo__task
+                  operation: add
+                  key: ${! json("key") }
+                  value: |
+                    root.key = this.key
+                    root.summary = this.summary
+                    root.completed = false
+                    root.timeline.createdAt = @kafka_timestamp_unix
+              - mapping: |
+                  meta io_shono_kind = "todo__task__created"
+                  root.status = 210
+                  root.task = this
+              - catch:
+                  - log:
+                      level: ERROR
+                      message: "Could not create task"
+                  - transform: |
+                      meta io_shono_kind = "todo__task__operation_failed"
+                      root.status = 409
+                      root.message = "task could not be created: ${! error()}"
