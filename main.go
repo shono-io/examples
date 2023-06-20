@@ -2,9 +2,10 @@ package main
 
 import (
 	"github.com/compose-spec/compose-go/dotenv"
-	"github.com/shono-io/examples/todo/tasks"
+	"github.com/shono-io/examples/todo"
+	"github.com/shono-io/shono/artifacts/benthos"
+	"github.com/shono-io/shono/inventory"
 	"github.com/shono-io/shono/local"
-	"github.com/shono-io/shono/runtime"
 	"github.com/sirupsen/logrus"
 	"os"
 )
@@ -28,24 +29,17 @@ func main() {
 		}
 	}
 
-	// -- get the configuration file path
-	configPath := os.Getenv("CONFIG_PATH")
-	if configPath == "" {
-		configPath = "shono.yaml"
-	}
+	ib := local.NewInventory()
+	todo.Attach(ib)
+	inv := ib.Build()
 
-	// -- get the reaktors this application is responsible for
-	reaktors, err := tasks.Reaktors()
+	// -- generate the artifacts for all the reaktors in the registry
+	artifact, err := benthos.NewConceptGenerator().Generate(inv, inventory.NewConceptReference("todo", "task"))
 	if err != nil {
-		logrus.Panicf("failed to get reaktors: %v", err)
+		logrus.Panicf("failed to generate concept artifact: %v", err)
 	}
 
-	registry, err := local.Load(os.DirFS("."), configPath, local.WithReaktor(reaktors...))
-	if err != nil {
-		logrus.Panicf("failed to load the local registry from %q: %v", configPath, err)
-	}
-
-	if err := runtime.Run(registry); err != nil {
-		logrus.Panicf("failed to run: %v", err)
+	if err := local.DumpArtifact("artifacts", artifact); err != nil {
+		logrus.Panicf("failed to dump artifact: %v", err)
 	}
 }
