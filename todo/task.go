@@ -21,6 +21,7 @@ func AttachTask(env *local.EnvironmentBuilder) {
 			Summary("A task is a single unit of work.").
 			Docs(`A task is a single unit of work. It can be created, deleted and completed.`).
 			Status(commons.StatusExperimental).
+			Stored().
 			Build()).
 		Event(inventory.NewEvent("todo", "task", "operation_failed").
 			Summary("Task Operation Failed").

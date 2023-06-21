@@ -32,6 +32,8 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230518184743-7afd39499903 // indirect
 	github.com/Shopify/sarama v1.30.1 // indirect
 	github.com/acomagu/bufpipe v1.0.4 // indirect
+	github.com/arangodb/go-driver v1.5.2 // indirect
+	github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e // indirect
 	github.com/aws/aws-sdk-go v1.44.271 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.18.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.10 // indirect
