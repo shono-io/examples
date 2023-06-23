@@ -33,6 +33,11 @@ func main() {
 	todo.Attach(ib)
 	inv := ib.Build()
 
+	generateReactors(inv)
+	generateInjectors(inv)
+}
+
+func generateReactors(inv inventory.Inventory) {
 	// -- generate the artifacts for all the reaktors in the registry
 	artifact, err := benthos.NewConceptGenerator().Generate("todo_task_reactors", inv, inventory.NewConceptReference("todo", "task"))
 	if err != nil {
@@ -41,5 +46,23 @@ func main() {
 
 	if err := local.DumpArtifact(artifact); err != nil {
 		logrus.Panicf("failed to dump artifact: %v", err)
+	}
+}
+
+func generateInjectors(inv inventory.Inventory) {
+	injectors, err := inv.ListInjectorsForScope(inventory.NewScopeReference("todo"))
+	if err != nil {
+		logrus.Panicf("failed to list injectors: %v", err)
+	}
+
+	for _, i := range injectors {
+		artifact, err := benthos.NewInjectorGenerator().Generate(i.Code(), inv, i.Reference())
+		if err != nil {
+			logrus.Panicf("failed to generate injector artifact: %v", err)
+		}
+
+		if err := local.DumpArtifact(artifact); err != nil {
+			logrus.Panicf("failed to dump artifact: %v", err)
+		}
 	}
 }

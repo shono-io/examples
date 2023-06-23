@@ -7,7 +7,7 @@ import (
 	"github.com/shono-io/shono/local"
 )
 
-func AttachTask(env *local.EnvironmentBuilder) {
+func AttachTask(env *local.InventoryBuilder) {
 	evtCreationRequested := inventory.NewEventReference("todo", "task", "creation_requested")
 	evtCreated := inventory.NewEventReference("todo", "task", "created")
 	evtCompletionRequested := inventory.NewEventReference("todo", "task", "completion_requested")
