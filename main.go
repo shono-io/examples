@@ -34,12 +34,12 @@ func main() {
 	inv := ib.Build()
 
 	// -- generate the artifacts for all the reaktors in the registry
-	artifact, err := benthos.NewConceptGenerator().Generate(inv, inventory.NewConceptReference("todo", "task"))
+	artifact, err := benthos.NewConceptGenerator().Generate("todo_task_reactors", inv, inventory.NewConceptReference("todo", "task"))
 	if err != nil {
 		logrus.Panicf("failed to generate concept artifact: %v", err)
 	}
 
-	if err := local.DumpArtifact("artifacts", artifact); err != nil {
+	if err := local.DumpArtifact(artifact); err != nil {
 		logrus.Panicf("failed to dump artifact: %v", err)
 	}
 }
