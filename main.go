@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/compose-spec/compose-go/dotenv"
+	"github.com/joho/godotenv"
 	"github.com/shono-io/examples/todo"
 	"github.com/shono-io/shono/artifacts/benthos"
 	"github.com/shono-io/shono/inventory"
@@ -15,7 +15,7 @@ var (
 )
 
 func main() {
-	if err := dotenv.Load(); err != nil {
+	if err := godotenv.Load(); err != nil {
 		logrus.Panicf("failed to load .env file: %v", err)
 	}
 

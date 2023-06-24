@@ -7,7 +7,7 @@ replace github.com/shono-io/shono v0.0.0 => ../shono
 replace github.com/shono-io/shono-ccloud v1.0.0 => ../shono-ccloud
 
 require (
-	github.com/compose-spec/compose-go v1.12.0
+	github.com/joho/godotenv v1.5.1
 	github.com/shono-io/shono v0.0.0
 	github.com/sirupsen/logrus v1.9.0
 )
