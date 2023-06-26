@@ -54,26 +54,43 @@ func AttachTask(env *local.InventoryBuilder) {
 			OutputEventCodes(evtOperationFailed.Code(), evtCreated.Code()).
 			Logic(inventory.NewLogic().
 				Steps(
-					dsl.AddToStore("todo", "task", "${! json(\"key\") }", dsl.BloblangMapping(`
-						root.key = this.key
-						root.summary = this.summary
-						root.completed = this.completed
-						root.timeline.createdAt = @kafka_timestamp_unix
-					`)),
 					dsl.Transform(dsl.BloblangMapping(`
-						meta io_shono_kind = "scopes/todo/concepts/task/events/created"
-						root.status = 201
-						root.task = this
+						root = this
+						root.timeline.createdAt = @timestamp
 					`)),
+					dsl.AddToStore("todo", "task", "${! json(\"key\") }"),
+					dsl.AsSuccessEvent(evtCreated, 201, `this`),
 					dsl.Catch(
 						dsl.Log("ERROR", "task could not be created: ${!error()}"),
-						dsl.Transform(dsl.BloblangMapping(`
-							meta io_shono_kind = "scopes/todo/concepts/task/events/operation_failed"
-							root.status = 409
-							root.message = "task could not be created: ${!error()}"
-						`)),
+						dsl.AsFailedEvent(evtOperationFailed, 409, "task could not be created: ${!error()}"),
 					),
-				)).
+				).Test(
+				inventory.NewTest("should create a task").
+					When(inventory.NewTestInput(
+						map[string]any{
+							"key":       "1",
+							"summary":   "test",
+							"completed": false,
+						},
+						inventory.WithEventRef(evtCreationRequested),
+						inventory.WithTimestamp(15))).
+					Then(
+						inventory.AssertMetadataContains(map[string]string{
+							"backbone_topic": "todo",
+							"status":         "201",
+							"kind":           "scopes/todo/concepts/task/events/created",
+							"timestamp":      "15",
+						}),
+						inventory.AssertContentEquals(map[string]interface{}{
+							"key":       "1",
+							"summary":   "test",
+							"completed": false,
+							"timeline": map[string]interface{}{
+								"createdAt": "15",
+							},
+						})).
+					Build(),
+			)).
 			Build()).
 		Reactor(inventory.NewReactor("todo", "task", "on_todo_task_deletion_requested").
 			Summary("Delete a task based on an external request").
@@ -106,10 +123,12 @@ func AttachTask(env *local.InventoryBuilder) {
 			Logic(inventory.NewLogic().
 				Steps(
 					dsl.GetFromStore("todo", "task", "${! json(\"key\") }"),
-					dsl.SetInStore("todo", "task", "${! json(\"key\") }", dsl.BloblangMapping(`
+					dsl.Transform(dsl.BloblangMapping(`
 						root = this
-						root.finished = true
+			 			root.completed = true
+						root.timeline.finishedAt = @timestamp
 					`)),
+					dsl.SetInStore("todo", "task", "${! json(\"key\") }"),
 					dsl.Transform(dsl.BloblangMapping(`
 						meta io_shono_kind = "scopes/todo/concepts/task/events/finished"
 						root = this

@@ -19,7 +19,7 @@ func Attach(env *local.InventoryBuilder) {
 		Input(file.NewInput(file.WithInputPath("tasks.json"))).
 		OutputEvent("todo", "task", "imported").
 		Logic(inventory.NewLogic().Steps(
-			dsl.AsEvent(inventory.NewEventReference("todo", "task", "imported"))),
+			dsl.AsSuccessEvent(inventory.NewEventReference("todo", "task", "imported"), 200, "this")),
 		).
 		Build())
 

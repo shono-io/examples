@@ -56,7 +56,7 @@ func generateInjectors(inv inventory.Inventory) {
 	}
 
 	for _, i := range injectors {
-		artifact, err := benthos.NewInjectorGenerator().Generate(i.Code(), inv, i.Reference())
+		artifact, err := benthos.NewInjectorGenerator().Generate(i.Code, inv, i.Reference())
 		if err != nil {
 			logrus.Panicf("failed to generate injector artifact: %v", err)
 		}
