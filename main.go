@@ -6,6 +6,7 @@ import (
 	"github.com/shono-io/shono/artifacts/benthos"
 	"github.com/shono-io/shono/inventory"
 	"github.com/shono-io/shono/local"
+	"github.com/shono-io/shono/runtime"
 	"github.com/sirupsen/logrus"
 	"os"
 )
@@ -42,6 +43,11 @@ func generateReactors(inv inventory.Inventory) {
 	artifact, err := benthos.NewConceptGenerator().Generate("todo_task_reactors", inv, inventory.NewConceptReference("todo", "task"))
 	if err != nil {
 		logrus.Panicf("failed to generate concept artifact: %v", err)
+	}
+
+	// -- perform test
+	if err := runtime.TestArtifact(runtime.RunConfig{}, artifact, "TRACE"); err != nil {
+		logrus.Errorf("tests failed: %v", err)
 	}
 
 	if err := local.DumpArtifact(artifact); err != nil {

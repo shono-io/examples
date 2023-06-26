@@ -18,6 +18,8 @@ require (
 	github.com/Jeffail/grok v1.1.0 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/Shopify/sarama v1.30.1 // indirect
+	github.com/arangodb/go-driver v1.5.2 // indirect
+	github.com/arangodb/go-velocypack v0.0.0-20200318135517-5af53c29c67e // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/benthosdev/benthos/v4 v4.15.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
