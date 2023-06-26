@@ -102,7 +102,7 @@ func AttachTask(env *local.InventoryBuilder) {
 			OutputEventCodes(evtOperationFailed.Code(), evtDeleted.Code()).
 			Logic(inventory.NewLogic().
 				Steps(
-					dsl.RemoveFromStore("todo", "task", "${! json(\"key\") }"),
+					dsl.RemoveFromStore("todo", "task", "${! meta(\"shono_key\") }"),
 					dsl.AsSuccessEvent(evtDeleted, 200, `this`),
 					dsl.Catch(
 						dsl.Log("ERROR", "task could not be deleted: ${!error()}"),
@@ -117,13 +117,13 @@ func AttachTask(env *local.InventoryBuilder) {
 			OutputEventCodes(evtFinished.Code(), evtOperationFailed.Code()).
 			Logic(inventory.NewLogic().
 				Steps(
-					dsl.GetFromStore("todo", "task", "${! json(\"key\") }"),
+					dsl.GetFromStore("todo", "task", "${! meta(\"shono_key\") }"),
 					dsl.Transform(dsl.BloblangMapping(`
 						root = this
 			 			root.completed = true
-						root.timeline.finishedAt = @timestamp
+						root.timeline.finishedAt = @shono_timestamp
 					`)),
-					dsl.SetInStore("todo", "task", "${! json(\"key\") }"),
+					dsl.SetInStore("todo", "task", "${! meta(\"shono_key\") }"),
 					dsl.AsSuccessEvent(evtFinished, 200, `this`),
 					dsl.Catch(
 						dsl.Log("ERROR", "task could not be completed: ${!error()}"),
