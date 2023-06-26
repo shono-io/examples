@@ -54,15 +54,18 @@ func AttachTask(env *local.InventoryBuilder) {
 			OutputEventCodes(evtOperationFailed.Code(), evtCreated.Code()).
 			Logic(inventory.NewLogic().
 				Steps(
+					dsl.Log("DEBUG", "creating task ${!@} with payload ${! json(\"key\") }"),
 					dsl.Transform(dsl.BloblangMapping(`
 						root = this
-						root.timeline.createdAt = @timestamp
+						root.timeline.createdAt = @shono_timestamp
 					`)),
 					dsl.AddToStore("todo", "task", "${! json(\"key\") }"),
+					dsl.Log("DEBUG", "success metadata ${!@} with payload ${! json(\"key\") }"),
 					dsl.AsSuccessEvent(evtCreated, 201, `this`),
 					dsl.Catch(
+						dsl.Log("DEBUG", "error metadata ${!@} with payload ${! json(\"key\") }"),
 						dsl.Log("ERROR", "task could not be created: ${!error()}"),
-						dsl.AsFailedEvent(evtOperationFailed, 409, "task could not be created: ${!error()}"),
+						dsl.AsFailedEvent(evtOperationFailed, 409, `"task could not be created: " + error()`),
 					),
 				).Test(
 				inventory.NewTest("should create a task").
@@ -76,10 +79,10 @@ func AttachTask(env *local.InventoryBuilder) {
 						inventory.WithTimestamp(15))).
 					Then(
 						inventory.AssertMetadataContains(map[string]string{
-							"backbone_topic": "todo",
-							"status":         "201",
-							"kind":           "scopes/todo/concepts/task/events/created",
-							"timestamp":      "15",
+							"shono_backbone_topic": "todo",
+							"shono_status":         "201",
+							"shono_kind":           "scopes/todo/concepts/task/events/created",
+							"shono_timestamp":      "15",
 						}),
 						inventory.AssertContentEquals(map[string]interface{}{
 							"key":       "1",
@@ -100,18 +103,10 @@ func AttachTask(env *local.InventoryBuilder) {
 			Logic(inventory.NewLogic().
 				Steps(
 					dsl.RemoveFromStore("todo", "task", "${! json(\"key\") }"),
-					dsl.Transform(dsl.BloblangMapping(`
-						meta io_shono_kind = "scopes/todo/concepts/task/events/deleted"
-						root.status = 200
-						root.removed = this
-					`)),
+					dsl.AsSuccessEvent(evtDeleted, 200, `this`),
 					dsl.Catch(
 						dsl.Log("ERROR", "task could not be deleted: ${!error()}"),
-						dsl.Transform(dsl.BloblangMapping(`
-							meta io_shono_kind = "scopes/todo/concepts/task/events/operation_failed"
-							root.status = 409
-							root.message = "task could not be deleted: ${!error()}"
-						`)),
+						dsl.AsFailedEvent(evtOperationFailed, 409, `"task could not be deleted: " + error()`),
 					),
 				)).
 			Build()).
@@ -129,17 +124,10 @@ func AttachTask(env *local.InventoryBuilder) {
 						root.timeline.finishedAt = @timestamp
 					`)),
 					dsl.SetInStore("todo", "task", "${! json(\"key\") }"),
-					dsl.Transform(dsl.BloblangMapping(`
-						meta io_shono_kind = "scopes/todo/concepts/task/events/finished"
-						root = this
-					`)),
+					dsl.AsSuccessEvent(evtFinished, 200, `this`),
 					dsl.Catch(
 						dsl.Log("ERROR", "task could not be completed: ${!error()}"),
-						dsl.Transform(dsl.BloblangMapping(`
-							meta io_shono_kind = "scopes/todo/concepts/task/events/operation_failed"
-							root.status = 409
-							root.message = "task could not be finished: ${!error()}"
-						`)),
+						dsl.AsFailedEvent(evtOperationFailed, 409, `"task could not be completed: " + error()`),
 					),
 				)).
 			Build())

@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/joho/godotenv"
 	"github.com/shono-io/examples/todo"
+	"github.com/shono-io/shono/artifacts"
 	"github.com/shono-io/shono/artifacts/benthos"
 	"github.com/shono-io/shono/inventory"
 	"github.com/shono-io/shono/local"
@@ -34,25 +35,27 @@ func main() {
 	todo.Attach(ib)
 	inv := ib.Build()
 
-	generateReactors(inv)
+	artifact := generateReactors(inv)
 	generateInjectors(inv)
-}
-
-func generateReactors(inv inventory.Inventory) {
-	// -- generate the artifacts for all the reaktors in the registry
-	artifact, err := benthos.NewConceptGenerator().Generate("todo_task_reactors", inv, inventory.NewConceptReference("todo", "task"))
-	if err != nil {
-		logrus.Panicf("failed to generate concept artifact: %v", err)
-	}
 
 	// -- perform test
-	if err := runtime.TestArtifact(runtime.RunConfig{}, artifact, "TRACE"); err != nil {
+	if err := runtime.TestArtifact(artifact, "TRACE"); err != nil {
 		logrus.Errorf("tests failed: %v", err)
+	}
+}
+
+func generateReactors(inv inventory.Inventory) artifacts.Artifact {
+	// -- generate the artifacts for all the reaktors in the registry
+	artifact, err := benthos.NewConceptGenerator().Generate("todo_task_reactors", "todo_task_reactors", inv, inventory.NewConceptReference("todo", "task"))
+	if err != nil {
+		logrus.Panicf("failed to generate concept artifact: %v", err)
 	}
 
 	if err := local.DumpArtifact(artifact); err != nil {
 		logrus.Panicf("failed to dump artifact: %v", err)
 	}
+
+	return artifact
 }
 
 func generateInjectors(inv inventory.Inventory) {
@@ -62,7 +65,7 @@ func generateInjectors(inv inventory.Inventory) {
 	}
 
 	for _, i := range injectors {
-		artifact, err := benthos.NewInjectorGenerator().Generate(i.Code, inv, i.Reference())
+		artifact, err := benthos.NewInjectorGenerator().Generate("todo_task_injector", i.Code, inv, i.Reference())
 		if err != nil {
 			logrus.Panicf("failed to generate injector artifact: %v", err)
 		}

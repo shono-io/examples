@@ -16,7 +16,7 @@ func Attach(env *local.InventoryBuilder) {
 		Build())
 
 	env.Injector(inventory.NewInjector("todo", "tasksFromFile").
-		Input(file.NewInput(file.WithInputPath("tasks.json"))).
+		Input(file.NewInput("tasks_file", file.WithInputPath("tasks.json"))).
 		OutputEvent("todo", "task", "imported").
 		Logic(inventory.NewLogic().Steps(
 			dsl.AsSuccessEvent(inventory.NewEventReference("todo", "task", "imported"), 200, "this")),
