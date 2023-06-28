@@ -15,7 +15,6 @@ func AttachTask(env *local.InventoryBuilder) {
 	evtDeletionRequested := inventory.NewEventReference("todo", "task", "deletion_requested")
 	evtDeleted := inventory.NewEventReference("todo", "task", "deleted")
 	evtOperationFailed := inventory.NewEventReference("todo", "task", "operation_failed")
-
 	env.
 		Concept(inventory.NewConcept("todo", "task").
 			Summary("A task is a single unit of work.").
@@ -38,6 +37,14 @@ func AttachTask(env *local.InventoryBuilder) {
 		Event(inventory.NewEvent("todo", "task", "created").
 			Summary("Task Created").
 			Docs(`A task was created`).
+			Build()).
+		Event(inventory.NewEvent("todo", "task", "completion_requested").
+			Summary("Task Completion Requested").
+			Docs(`An external system (like an API) requested a task to be completed`).
+			Build()).
+		Event(inventory.NewEvent("todo", "task", "finished").
+			Summary("Task Finished").
+			Docs(`The task was completed`).
 			Build()).
 		Event(inventory.NewEvent("todo", "task", "deletion_requested").
 			Summary("Task Deletion Requested").
