@@ -1,0 +1,7 @@
+event:
+  scope: todo
+  concept: task
+  code: imported
+  summary: Task Imported
+  docs: |
+    A task was imported from an external source

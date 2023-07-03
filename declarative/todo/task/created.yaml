@@ -1,0 +1,6 @@
+event:
+  scope: todo
+  concept: task
+  code: created
+  summary: Task Created
+  docs: A task was created

@@ -1,0 +1,7 @@
+event:
+  scope: todo
+  concept: task
+  code: finished
+  summary: Task Completed
+  docs: |
+    A task was completed

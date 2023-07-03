@@ -1,0 +1,6 @@
+event:
+  scope: todo
+  concept: task
+  code: deleted
+  summary: Task Deleted
+  docs: A task was deleted

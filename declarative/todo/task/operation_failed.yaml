@@ -1,0 +1,7 @@
+event:
+  scope: todo
+  concept: task
+  code: operation_failed
+  summary: Task Operation Failed
+  docs: |
+    A task operation failed

@@ -1,0 +1,7 @@
+event:
+  scope: todo
+  concept: task
+  code: completion_requested
+  summary: Task Completion Requested
+  docs: |
+    A task was requested to be completed
