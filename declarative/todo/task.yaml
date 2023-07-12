@@ -1,0 +1,7 @@
+concept:
+  scope: todo
+  code: task
+  summary: A task is a single unit of work.
+  docs: A task is a single unit of work. It can be created, deleted and completed.
+  status: experimental
+  stored: true

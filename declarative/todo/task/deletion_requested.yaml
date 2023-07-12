@@ -1,0 +1,7 @@
+event:
+  scope: todo
+  concept: task
+  code: deletion_requested
+  summary: Task Deletion Requested
+  docs: |
+    A task was requested to be deleted

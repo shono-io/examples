@@ -1,0 +1,5 @@
+scope:
+  code: todo
+  status: experimental
+  summary: Manage todos at scale
+  docs: A simple and easy example application to demonstrate the power of Shono.

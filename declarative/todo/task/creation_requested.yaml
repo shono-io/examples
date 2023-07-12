@@ -1,0 +1,7 @@
+event:
+  scope: todo
+  concept: task
+  code: creation_requested
+  summary: Task Creation Requested
+  docs: |
+    A task was requested to be created
