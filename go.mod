@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/joho/godotenv v1.5.1
-	github.com/shono-io/shono v0.1.0
+	github.com/shono-io/shono v0.2.0
 	github.com/sirupsen/logrus v1.9.0
 )
 
